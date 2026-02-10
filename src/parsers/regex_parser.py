@@ -100,7 +100,15 @@ def _extract_title(line: str) -> tuple[Optional[str], str]:
             return title, remaining
         pos += 1
 
-    # No closing quote found — might be a malformed entry
+    # No closing quote found — try to recover by inferring the title
+    # ends at the first {{ template marker (common wiki editor typo)
+    tmpl_pos = stripped.find("{{", 1)
+    if tmpl_pos > 1:
+        title = stripped[1:tmpl_pos].strip()
+        remaining = stripped[tmpl_pos:].strip()
+        if title:
+            return title, remaining
+
     return None, stripped
 
 
