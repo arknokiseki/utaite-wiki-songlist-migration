@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Song Data Viewer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <style>
+        [v-cloak] {
+            display: none;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-100 p-8">
+    <div id="app" v-cloak>
+        <div class="max-w-7xl mx-auto">
+            <h1 class="text-3xl font-bold mb-6 text-gray-800">Processed Song Data Viewer</h1>
+
+            <!-- Status & Controls -->
+            <div class="bg-white p-6 rounded-lg shadow mb-6">
+                <div v-if="loading" class="text-center py-4">
+                    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+                    <p class="mt-2 text-gray-600">Loading data...</p>
+                </div>
+
+                <div v-else-if="error" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
+                    <strong class="font-bold">Error!</strong>
+                    <span class="block sm:inline">{{ error }}</span>
+                </div>
+
+                <div v-else>
+                    <!-- Filters -->
+                    <div class="flex flex-col md:flex-row justify-between items-end mb-4 gap-4">
+                        <div class="w-full md:w-auto flex-grow flex gap-4">
+                            <div class="flex-grow">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Search</label>
+                                <input v-model="searchQuery" type="text" placeholder="Search by title, artist, or ID..."
+                                    class="border rounded px-4 py-2 w-full focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            </div>
+                            <div class="w-48">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Confidence</label>
+                                <select v-model="confidenceFilter"
+                                    class="border rounded px-4 py-2 w-full focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+                                    <option value="all">All</option>
+                                    <option value="high">High</option>
+                                    <option value="medium">Medium</option>
+                                    <option value="low">Low</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="text-gray-600 text-sm whitespace-nowrap">
+                            Showing <span class="font-bold">{{ paginatedSongs.length }}</span> of <span
+                                class="font-bold">{{ filteredSongs.length }}</span>
+                            (Total: {{ songs.length }})
+                        </div>
+                    </div>
+
+                    <!-- Pagination Top -->
+                    <div class="flex justify-between items-center mt-4 pt-4 border-t border-gray-100">
+                        <div class="flex gap-2">
+                            <button @click="currentPage = 1" :disabled="currentPage === 1"
+                                class="px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded disabled:opacity-50 hover:bg-gray-300 transition">
+                                First
+                            </button>
+                            <button @click="currentPage--" :disabled="currentPage === 1"
+                                class="px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded disabled:opacity-50 hover:bg-gray-300 transition">
+                                Prev
+                            </button>
+                        </div>
+
+                        <div class="flex gap-1 overflow-x-auto max-w-[50vw]">
+                            <button v-for="page in visiblePages" :key="page" @click="currentPage = page"
+                                class="px-3 py-1 text-sm rounded transition"
+                                :class="currentPage === page ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-100'">
+                                {{ page }}
+                            </button>
+                        </div>
+
+                        <div class="flex gap-2">
+                            <button @click="currentPage++" :disabled="currentPage === totalPages"
+                                class="px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded disabled:opacity-50 hover:bg-gray-300 transition">
+                                Next
+                            </button>
+                            <button @click="currentPage = totalPages" :disabled="currentPage === totalPages"
+                                class="px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded disabled:opacity-50 hover:bg-gray-300 transition">
+                                Last
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Data Table -->
+            <div v-if="!loading && !error" class="bg-white rounded-lg shadow overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th scope="col"
+                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Title</th>
+                            <th scope="col"
+                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Original Artist / Root</th>
+                            <th scope="col"
+                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                IDs</th>
+                            <th scope="col"
+                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Date</th>
+                            <th scope="col"
+                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Status</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        <tr v-for="song in paginatedSongs" :key="song.raw_line" class="hover:bg-gray-50">
+                            <td class="px-6 py-4">
+                                <div class="text-sm font-medium text-gray-900">{{ song.title }}</div>
+                                <div class="text-sm text-gray-500" v-if="song.title_translation">{{
+                                    song.title_translation }}</div>
+                                <div class="text-xs text-gray-400 mt-1" v-if="song.version">Version: {{ song.version }}
+                                </div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="text-sm text-gray-900">{{ song.root_artist }}</div>
+                                <div class="text-xs text-gray-500 truncate max-w-xs"
+                                    :title="formatFeatured(song.featured_artists)">
+                                    {{ formatFeatured(song.featured_artists) }}
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 text-sm text-gray-500">
+                                <div v-if="song.niconico_id" class="flex items-center gap-1">
+                                    <span class="font-mono text-xs bg-gray-100 px-1 rounded">NND</span>
+                                    <a :href="'https://www.nicovideo.jp/watch/' + song.niconico_id" target="_blank"
+                                        class="text-indigo-600 hover:underline">{{ song.niconico_id }}</a>
+                                </div>
+                                <div v-if="song.youtube_id" class="flex items-center gap-1 mt-1">
+                                    <span class="font-mono text-xs bg-red-100 text-red-800 px-1 rounded">YT</span>
+                                    <a :href="'https://youtu.be/' + song.youtube_id" target="_blank"
+                                        class="text-indigo-600 hover:underline">{{ song.youtube_id }}</a>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {{ song.upload_date }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full" :class="{
+                                        'bg-green-100 text-green-800': song.status === 'active',
+                                        'bg-red-100 text-red-800': song.status === 'deleted' || song.status === 'private',
+                                        'bg-yellow-100 text-yellow-800': song.status === 'community active'
+                                    }">
+                                    {{ song.status }}
+                                </span>
+                                <div class="text-xs mt-1 font-medium" :class="{
+                                        'text-green-600': song.confidence === 'high',
+                                        'text-yellow-600': song.confidence === 'medium',
+                                        'text-red-600': song.confidence === 'low'
+                                    }">
+                                    {{ (song.confidence || 'unknown').toUpperCase() }}
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination Controls (Bottom) -->
+            <div v-if="!loading && !error" class="flex justify-between items-center mt-4">
+                <div class="text-sm text-gray-500">
+                    Page {{ currentPage }} of {{ totalPages }}
+                </div>
+                <div class="flex gap-2">
+                    <button @click="currentPage--" :disabled="currentPage === 1"
+                        class="px-4 py-2 bg-indigo-600 text-white rounded disabled:bg-gray-300 hover:bg-indigo-700 transition">
+                        Previous
+                    </button>
+                    <button @click="currentPage++" :disabled="currentPage === totalPages"
+                        class="px-4 py-2 bg-indigo-600 text-white rounded disabled:bg-gray-300 hover:bg-indigo-700 transition">
+                        Next
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, onMounted, computed, watch } = Vue
+
+        createApp({
+            setup() {
+                const songs = ref([])
+                const loading = ref(true)
+                const error = ref(null)
+                const searchQuery = ref('')
+                const confidenceFilter = ref('all')
+                const currentPage = ref(1)
+                const itemsPerPage = 50
+
+                const fetchData = async () => {
+                    try {
+                        const response = await fetch('data/processed/all_songs.json')
+                        if (!response.ok) throw new Error('Failed to load data file')
+                        songs.value = await response.json()
+                        loading.value = false
+                    } catch (err) {
+                        error.value = err.message + '. Make sure you are running this file via a local server (e.g. python3 -m http.server).'
+                        loading.value = false
+                    }
+                }
+
+                const filteredSongs = computed(() => {
+                    let result = songs.value
+
+                    // Filter by Confidence
+                    if (confidenceFilter.value !== 'all') {
+                        result = result.filter(song => song.confidence === confidenceFilter.value)
+                    }
+
+                    // Filter by Search Query
+                    if (searchQuery.value) {
+                        const query = searchQuery.value.toLowerCase()
+                        result = result.filter(song =>
+                            (song.title && song.title.toLowerCase().includes(query)) ||
+                            (song.root_artist && song.root_artist.toLowerCase().includes(query)) ||
+                            (song.niconico_id && song.niconico_id.toLowerCase().includes(query)) ||
+                            (song.youtube_id && song.youtube_id.toLowerCase().includes(query))
+                        )
+                    }
+                    return result
+                })
+
+                const totalPages = computed(() => Math.ceil(filteredSongs.value.length / itemsPerPage))
+
+                const paginatedSongs = computed(() => {
+                    const start = (currentPage.value - 1) * itemsPerPage
+                    return filteredSongs.value.slice(start, start + itemsPerPage)
+                })
+
+                const visiblePages = computed(() => {
+                    const total = totalPages.value
+                    const current = currentPage.value
+                    const delta = 2
+                    const range = []
+
+                    for (let i = Math.max(1, current - delta); i <= Math.min(total, current + delta); i++) {
+                        range.push(i)
+                    }
+
+                    if (range[0] > 1) {
+                        if (range[0] > 2) range.unshift('...')
+                        range.unshift(1)
+                    }
+                    if (range[range.length - 1] < total) {
+                        if (range[range.length - 1] < total - 1) range.push('...')
+                        range.push(total)
+                    }
+
+                    // Filter out '...' for simpler rendering in this basic version or handle it
+                    // For now, let's just return the simple range around current page + first/last handled by buttons
+                    // Actually, let's just show a sliding window
+                    const windowSize = 5
+                    let start = Math.max(1, current - 2)
+                    let end = Math.min(total, start + windowSize - 1)
+                    if (end - start < windowSize - 1) {
+                        start = Math.max(1, end - windowSize + 1)
+                    }
+
+                    const pages = []
+                    for (let i = start; i <= end; i++) {
+                        pages.push(i)
+                    }
+                    return pages
+                })
+
+                // Reset pagination when filters change
+                watch([searchQuery, confidenceFilter], () => {
+                    currentPage.value = 1
+                })
+
+                const formatFeatured = (artists) => {
+                    if (!artists || artists.length === 0) return '-'
+                    return artists.join(', ')
+                }
+
+                onMounted(() => {
+                    fetchData()
+                })
+
+                return {
+                    songs,
+                    loading,
+                    error,
+                    searchQuery,
+                    confidenceFilter,
+                    currentPage,
+                    totalPages,
+                    paginatedSongs,
+                    filteredSongs,
+                    visiblePages,
+                    formatFeatured
+                }
+            }
+        }).mount('#app')
+    </script>
+</body>
+
+</html>

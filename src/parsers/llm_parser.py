@@ -95,14 +95,19 @@ def parse_entry_with_llm(
     sort_index: int,
     provider: str = "openai",
     model_name: str = "gpt-4o-mini",
-    max_retries: int = 3
+    max_retries: int = 3,
+    regex_result: dict | None = None,
 ) -> dict:
-    """Parse a single line using an LLM (OpenAI or Gemini) with retries."""
+    """Parse a single line using an LLM (OpenAI or Gemini) with retries.
+    
+    If regex_result is provided, it will be used as fallback data when the LLM fails,
+    preserving the partially-parsed regex data instead of returning a blank entry.
+    """
     
     # --- Gemini Logic (New SDK) ---
     if provider == "gemini":
         if not GEMINI_AVAILABLE:
-            return _create_failure_entry(raw_line, source_page, root_artist, sort_index, "gemini_not_configured")
+            return _create_failure_entry(raw_line, source_page, root_artist, sort_index, "gemini_not_configured", regex_result)
         
         last_error = None
         for attempt in range(max_retries):
@@ -139,12 +144,12 @@ def parse_entry_with_llm(
                 print(f"Gemini attempt {attempt+1}/{max_retries} failed: {e}")
                 time.sleep(2) # Wait 2 seconds before retrying
         
-        return _create_failure_entry(raw_line, source_page, root_artist, sort_index, f"gemini_failed_{type(last_error).__name__}")
+        return _create_failure_entry(raw_line, source_page, root_artist, sort_index, f"gemini_failed_{type(last_error).__name__}", regex_result)
 
     # --- OpenAI Logic (Default) ---
     else:
         if not OPENAI_CLIENT:
-            return _create_failure_entry(raw_line, source_page, root_artist, sort_index, "openai_no_key")
+            return _create_failure_entry(raw_line, source_page, root_artist, sort_index, "openai_no_key", regex_result)
 
         try:
             response = OPENAI_CLIENT.chat.completions.create(
@@ -174,11 +179,22 @@ def parse_entry_with_llm(
             ).to_dict()
 
         except Exception as e:
-            return _create_failure_entry(raw_line, source_page, root_artist, sort_index, f"openai_failed_{type(e).__name__}")
+            return _create_failure_entry(raw_line, source_page, root_artist, sort_index, f"openai_failed_{type(e).__name__}", regex_result)
 
 
-def _create_failure_entry(raw_line, source_page, root_artist, sort_index, method):
-    """Helper to create a failed entry object."""
+def _create_failure_entry(raw_line, source_page, root_artist, sort_index, method, regex_result=None):
+    """Helper to create a failed entry object.
+    
+    If regex_result is provided, preserves the regex-parsed data (title, IDs, etc.)
+    and only updates parse_method to indicate the LLM failure reason.
+    """
+    if regex_result:
+        # Preserve original regex data, just mark the failure
+        result = dict(regex_result)
+        result["parse_method"] = f"{result.get('parse_method', 'regex')}+{method}"
+        return result
+    
+    # Fallback: no regex data available
     return ParsedSongEntry(
         raw_line=raw_line,
         sort_index=sort_index,

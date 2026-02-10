@@ -14,6 +14,7 @@ import argparse
 import asyncio
 import hashlib
 import json
+import logging
 import os
 import sys
 import time
@@ -24,6 +25,32 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from src.parsers.regex_parser import parse_page
 from src.parsers.llm_parser import parse_entry_with_llm
+
+# ---------------------------------------------------------------------------
+# Logging setup
+# ---------------------------------------------------------------------------
+
+LOG_DIR = "logs"
+os.makedirs(LOG_DIR, exist_ok=True)
+log_filename = os.path.join(
+    LOG_DIR,
+    f"pipeline_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log",
+)
+
+logger = logging.getLogger("pipeline")
+logger.setLevel(logging.DEBUG)
+
+# File handler — full debug output
+_fh = logging.FileHandler(log_filename, encoding="utf-8")
+_fh.setLevel(logging.DEBUG)
+_fh.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
+logger.addHandler(_fh)
+
+# Console handler — info and above
+_ch = logging.StreamHandler()
+_ch.setLevel(logging.INFO)
+_ch.setFormatter(logging.Formatter("%(message)s"))
+logger.addHandler(_ch)
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -163,16 +190,22 @@ async def process_one_entry(
                     sort_index=entry["sort_index"],
                     provider=provider,
                     model_name=model,
+                    regex_result=entry,  # pass original regex data as fallback
                 ),
             )
 
-            if "failed" not in llm_result.get("parse_method", ""):
-                return key, llm_result, True
+            ok = "failed" not in llm_result.get("parse_method", "")
+            if ok:
+                logger.debug("LLM OK   | %s | title=%s", key, llm_result.get("title"))
             else:
-                return key, entry, False
+                logger.warning(
+                    "LLM FAIL | %s | method=%s | raw=%s",
+                    key, llm_result.get("parse_method"), entry["raw_line"][:120],
+                )
+            return key, llm_result, ok
 
         except Exception as e:
-            print(f"  [ERROR] {key}: {e}")
+            logger.error("LLM EXCEPTION | %s | %s: %s", key, type(e).__name__, e)
             return key, entry, False
 
 
@@ -236,8 +269,8 @@ async def run_llm_pass_async(
                          and entry_key(entries[tasks[t]]) == key)]  # noqa
 
         # Actually, simpler approach: just use the key
-        completed[key] = result
         if ok:
+            completed[key] = result  # only cache successes
             # Find and update the entry
             for i in todo:
                 if entry_key(entries[i]) == key:
@@ -343,11 +376,15 @@ async def run_llm_pass_v2(
                 continue
 
             key, llm_result, ok = result
-            completed[key] = llm_result
             if ok:
+                completed[key] = llm_result  # only cache successes
                 entries[idx] = llm_result
                 success += 1
             else:
+                # Do NOT cache failures — they'll be retried next run.
+                # The entry keeps its original regex data (preserved by
+                # _create_failure_entry via regex_result).
+                entries[idx] = llm_result
                 fail += 1
 
         done_count += len(chunk)
