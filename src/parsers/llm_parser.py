@@ -1,8 +1,7 @@
 """
 LLM-based parser for non-standard Utaite Wiki song entries.
 
-Uses OpenAI's GPT-4o-mini to parse entries that the regex parser could not handle
-with high confidence.
+Uses OpenAI's GPT-4o-mini or Google's Gemini (New SDK) to parse entries.
 """
 
 import json
@@ -10,22 +9,40 @@ import os
 from typing import Optional
 
 from dotenv import load_dotenv
+
+# --- OpenAI Import ---
 try:
     from openai import OpenAI
 except ImportError:
     OpenAI = None
+
+# --- Gemini Import (New SDK) ---
+try:
+    from google import genai
+except ImportError:
+    genai = None
 
 from src.parsers.models import ParsedSongEntry
 
 # Load environment variables
 load_dotenv()
 
-# Initialize OpenAI client if API key is present and library is installed
-_API_KEY = os.getenv("OPENAI_API_KEY")
-if OpenAI and _API_KEY:
-    CLIENT = OpenAI(api_key=_API_KEY)
+# --- OpenAI Setup ---
+_OPENAI_KEY = os.getenv("OPENAI_API_KEY")
+if OpenAI and _OPENAI_KEY:
+    OPENAI_CLIENT = OpenAI(api_key=_OPENAI_KEY)
 else:
-    CLIENT = None
+    OPENAI_CLIENT = None
+
+# --- Gemini Setup (New SDK) ---
+_GEMINI_KEY = os.getenv("GEMINI_API_KEY")
+if genai and _GEMINI_KEY:
+    # The new SDK uses a Client object
+    GEMINI_CLIENT = genai.Client(api_key=_GEMINI_KEY)
+    GEMINI_AVAILABLE = True
+else:
+    GEMINI_CLIENT = None
+    GEMINI_AVAILABLE = False
 
 # System prompt for the LLM
 SYSTEM_PROMPT = """You are a parser for Utaite Wiki song entries.
@@ -73,65 +90,104 @@ def parse_entry_with_llm(
     source_page: str,
     root_artist: str,
     sort_index: int,
+    provider: str = "openai",
+    model_name: str = "gpt-4o-mini"
 ) -> dict:
-    """Parse a single line using LLM (GPT-4o-mini).
+    """Parse a single line using an LLM (OpenAI or Gemini).
 
     Args:
         raw_line: The raw wikitext line.
         source_page: The wiki page name.
         root_artist: The root artist name.
         sort_index: The 1-based index.
+        provider: "openai" or "gemini".
+        model_name: The specific model ID (e.g., "gpt-4o-mini", "gemini-3.0-flash-preview").
 
     Returns:
         A dictionary matching the ParsedSongEntry schema.
     """
-    if not CLIENT:
-        # Fallback if no API key
-        return ParsedSongEntry(
-            raw_line=raw_line,
-            sort_index=sort_index,
-            source_page=source_page,
-            root_artist=root_artist,
-            confidence="low",
-            parse_method="llm_failed_no_key",
-        ).to_dict()
-
-    try:
-        response = CLIENT.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": raw_line},
-            ],
-            response_format={"type": "json_object"},
-            temperature=0.0,
-        )
+    
+    # --- Gemini Logic (New SDK) ---
+    if provider == "gemini":
+        if not GEMINI_AVAILABLE:
+            return _create_failure_entry(raw_line, source_page, root_artist, sort_index, "gemini_not_configured")
         
-        content = response.choices[0].message.content
-        if not content:
-            raise ValueError("Empty response from LLM")
+        try:
+            # The new SDK passes system instructions and mime type in the 'config' argument
+            response = GEMINI_CLIENT.models.generate_content(
+                model=model_name,
+                contents=raw_line,
+                config={
+                    'response_mime_type': 'application/json',
+                    'system_instruction': SYSTEM_PROMPT
+                }
+            )
             
-        data = json.loads(content)
+            # response.text contains the JSON string
+            content = response.text
+            if not content:
+                raise ValueError("Empty response from Gemini")
+                
+            data = json.loads(content)
+            
+            return ParsedSongEntry(
+                raw_line=raw_line,
+                sort_index=sort_index,
+                source_page=source_page,
+                root_artist=root_artist,
+                confidence="high",
+                parse_method=f"gemini_{model_name}",
+                **data
+            ).to_dict()
+            
+        except Exception as e:
+            # print(f"Gemini parsing failed for line: {raw_line}\nError: {e}")
+            return _create_failure_entry(raw_line, source_page, root_artist, sort_index, f"gemini_failed_{type(e).__name__}")
 
-        # Create entry with metadata
-        entry = ParsedSongEntry(
-            raw_line=raw_line,
-            sort_index=sort_index,
-            source_page=source_page,
-            root_artist=root_artist,
-            confidence="high",  # specific confidence form LLM? Assume high if it parses.
-            parse_method="llm",
-            **data  # Unpack extracted fields
-        )
-        return entry.to_dict()
+    # --- OpenAI Logic (Default) ---
+    else:
+        if not OPENAI_CLIENT:
+            return _create_failure_entry(raw_line, source_page, root_artist, sort_index, "openai_no_key")
 
-    except Exception as e:
-        print(f"LLM parsing failed for line: {raw_line}\nError: {e}")
-        return ParsedSongEntry(
-            raw_line=raw_line,
-            sort_index=sort_index,
-            source_page=source_page,
-            root_artist=root_artist,
-            confidence="low",
-            parse_method=f"llm_failed_{type(e).__name__}",
-        ).to_dict()
+        try:
+            response = OPENAI_CLIENT.chat.completions.create(
+                model=model_name,
+                messages=[
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": raw_line},
+                ],
+                response_format={"type": "json_object"},
+                temperature=0.0,
+            )
+            
+            content = response.choices[0].message.content
+            if not content:
+                raise ValueError("Empty response from OpenAI")
+                
+            data = json.loads(content)
+
+            return ParsedSongEntry(
+                raw_line=raw_line,
+                sort_index=sort_index,
+                source_page=source_page,
+                root_artist=root_artist,
+                confidence="high",
+                parse_method=f"openai_{model_name}",
+                **data
+            ).to_dict()
+
+        except Exception as e:
+            # print(f"OpenAI parsing failed for line: {raw_line}\nError: {e}")
+            return _create_failure_entry(raw_line, source_page, root_artist, sort_index, f"openai_failed_{type(e).__name__}")
+
+
+def _create_failure_entry(raw_line, source_page, root_artist, sort_index, method):
+    """Helper to create a failed entry object."""
+    return ParsedSongEntry(
+        raw_line=raw_line,
+        sort_index=sort_index,
+        source_page=source_page,
+        root_artist=root_artist,
+        confidence="low",
+        parse_method=method,
+    ).to_dict()
