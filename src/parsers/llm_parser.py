@@ -153,7 +153,7 @@ def parse_entry_with_llm(
                 "PROBLEM ROW (Gemini not configured) | source=%s | index=%d | raw=%s",
                 source_page, sort_index, raw_line[:200],
             )
-            return _create_failure_entry(raw_line, source_page, root_artist, sort_index, "gemini_not_configured", regex_result)
+            return _create_failure_entry(raw_line, source_page, root_artist, sort_index, "gemini_failed_not_configured", regex_result)
         
         last_error = None
         for attempt in range(max_retries):
@@ -206,7 +206,7 @@ def parse_entry_with_llm(
                 "PROBLEM ROW (OpenAI not configured) | source=%s | index=%d | raw=%s",
                 source_page, sort_index, raw_line[:200],
             )
-            return _create_failure_entry(raw_line, source_page, root_artist, sort_index, "openai_no_key", regex_result)
+            return _create_failure_entry(raw_line, source_page, root_artist, sort_index, "openai_failed_no_key", regex_result)
 
         try:
             response = OPENAI_CLIENT.chat.completions.create(
