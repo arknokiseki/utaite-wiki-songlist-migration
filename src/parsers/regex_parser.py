@@ -216,7 +216,7 @@ def _extract_status(text: str) -> tuple[str, str]:
         elif "defunct" in status_text:
             return "defunct", remaining.strip()
 
-    return "active", text
+    return "", text
 
 
 def _extract_date(text: str) -> tuple[Optional[str], str]:

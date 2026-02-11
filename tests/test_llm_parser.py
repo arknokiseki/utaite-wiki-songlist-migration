@@ -19,7 +19,7 @@ class TestLLMParser(unittest.TestCase):
             "upload_date": "2020-01-01",
             "featured_artists": [],
             "version": None,
-            "status": "active",
+            "status": "",
             "is_original": False
         }
 

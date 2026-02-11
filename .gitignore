@@ -34,3 +34,8 @@ Thumbs.db
 
 *projectbrief-*.md
 *q&a-session-*.md
+
+count_problem_pages.py
+*.log
+
+documentation/**

@@ -1,0 +1,175 @@
+<script>
+    // 1. Raw Data Input
+    const rawNames = [
+        'Remyu', 'Madoka', 'Chogakusei/Songs', 'Serena', 'SILVANA/Songs', 'Sapphire', 'Ali', 'Stungun/Songs', 'Akemi',
+        'UraShimaSakataSen/Songs', 'KANKAN', 'Satomi', 'Chaz', 'Faneru', 'Kujiragi', 'Nayugorou', 'Yuaru', 'Hashiyan/Songs',
+        'Recog', 'Rio', 'Wotamin/Songs', 'Akie', 'Noire', 'BURNBIT', 'Megatera Zero', 'Kuzuha', 'Ayo', 'After the Rain/Songs',
+        'FM-kun', 'Uramanbou', 'Soma', 'Enn', 'Yua', 'Chiisana', 'Sekihan/Songs', 'Apol', 'Vin', 'Matsushita/Songs',
+        'Terutokun', 'Un_c/Songs', 'Swi', 'Majiko/Songs', 'Kanade', 'Sou/Songs', 'Ｎｏｎ', 'JubyPhonic', 'ChiE', 'Risru',
+        'Rihardxxsr', 'UraSaka', 'Jel', 'Neko', 'ATEL', 'Sakuya.', 'Forte', 'Bis', 'Soraru/Songs/Cover', 'Alfakyun./Songs',
+        'Piko/Songs', 'Tane', 'Uuu', 'Yoruno', 'YUKIri', 'HaRuK@', 'Kame', 'Mattaku', 'Aya me', 'Espei', 'Jayn', 'Kenta',
+        'Poucet', 'SeasonalSweets', 'Hiraga', 'Murphykun', 'Vau', 'Ketchup', 'Strawberry Prince/Songs', 'KOMEyoungTEA',
+        'Hiiragi Yuka', 'DomNeeke', 'Ryodo', 'Fokushi', 'Choumiryou/Songs', 'Kottaro', 'Myusan', 'Senra/Songs', 'Rishe', 'Au',
+        'Ue', 'Usachii', 'TBK', 'K-chan', 'Riseha', 'Yuuyu', 'Mega', 'Ritsuka/Songs', 'Tachibana Hotaru', 'Itoe Kouki',
+        'MoonNue', 'Tsukasashi', 'Category_Smiley_2G', 'Chalili', 'Tonari no Sakata/Songs', 'Uratanuki/Songs',
+        'Akiakane/Songs', 'Category_BURST', 'Shimizu Tatsuya', 'Izumi', 'Aimiya Zero', 'Itou Kashitarou/Songs', 'Sato-kun',
+        'Tedy', 'F9', 'Kamikita Ken/Songs', 'Yukari', '□shirokuro■', 'Reol/Songs', 'Sigmo', 'Komatsuna', 'Rey', 'Rioka',
+        'Shijin', 'Furuike Yuusuke', 'Raon Lee/Songs', 'SIXFONIA/Songs', 'Lasah', 'Saki Rose', 'Shuiro', 'Akano', 'Anthong',
+        'Nanamori', 'Yamai', 'Colon/Songs', 'Sugarlat', 'Minuta', 'Rim', 'Kano/Songs', 'Amanda Lee', 'Ichinose Hidenori',
+        'Category_RootFive (√5)', 'Panaman', 'Soraru/Songs/Original', 'Eruno', 'Akatin/Songs', 'Hima72', 'Kisuke no Yuujin',
+        'Oktavia', 'Konoco/Songs', 'Ashe', 'Yorukichi', 'Kiryuin Sena', 'Phoebe', 'Shoko', 'Shamuon', 'ΦKushiΦ',
+        'Ikasan/Songs', '＿＿/Songs', 'Kettaro/Songs', 'Ajikko', 'Nqrse/Songs', 'Rid', 'Relu', 'Akane Sasu Sora', '℃iel',
+        'Araki/Songs', 'Shannon', 'Nero', '♣UmbraticForest♣', 'Katakiri Rekka', 'Ado/Songs', 'AY-jin', 'Renoa',
+        'Rap-bit/Songs', 'Glutamine/Songs', 'Nayuta (female)/Songs', 'Rib/Songs', 'Amatsuki/Songs', 'Lis',
+        'StarLight PolaRis/Songs', 'Vulkain', 'Ayan', 'Winnie', 'Ivudot/Songs', 'Jefferz', 'Category_CollaboDaisakusen',
+        'Gom/Songs', 'Himawari', 'Kage', 'Aomofu', 'Kanna', 'Rere', 'Yuri', 'Tarachio', 'So~ma', 'Anba', 'Hamahiro',
+        'Sainte Séïa', 'SingingSamine', 'Nano/Songs', 'Angela', 'Marie☆FD', 'Yoru', 'Alilem', 'Shamo', 'Kyounosuke/Songs',
+        'Wolpis Carter/Songs', 'Aisu', 'CielA', 'Houkago no Aitsu', 'Ishigantou', 'Mafumafu/Songs/Original', 'Froggie',
+        'Kisaragi You', 'NekoTakei', 'Noaon', 'Valshe/Songs', '✿ham', 'AnMo', 'Eve/Songs', 'Capi', 'NORISTRY/Songs', 'Hiina',
+        'Raku', '_namirin', 'Xea/Songs/cover', 'KITSI', 'SymaG', 'Balloon', 'Ashikubi',
+        'Category_Sandbox/UtaiteCollaborationUnitSandbox', 'Dongdang', 'Kasuka', 'Saiya', 'EVO+', 'Dria-dono', 'Soraru/Songs',
+        'Rumdarjun/Songs', 'Xandu', 'Hanatan/Songs/Covers on YouTube Livestreams and TwitCasting Lives', 'Ude Miwa',
+        'Luschka', 'Yuudai', 'Yuuki Aoi (結城碧)/Songs', 'Nanahira/Songs', 'Ayakawa Yukiya', 'LilyPichu', 'Yukimi/Songs',
+        'Nameless', 'Hyon', 'Luz/Songs', 'Abeshi', 'Leelee', 'Mafumafu/Songs/Cover', 'Ryo-kun/Songs', 'Y. Chang', 'Inakamono',
+        'Kuri~n', 'Nyamai', 'ShounenT/Songs', 'Touyu/Songs', 'Category_BAD COLLAR', 'Otane', 'Gero/Songs', 'Bloodyflora',
+        'Gazelle/Songs', 'Envy', 'Hanatan/Songs', 'Kenty', 'Ayaponzu/_Songs', 'Meramipop/Songs', 'Roccol', 'Stella', 'Riwon',
+        'That/Songs', 'KAiARI', 'Aruvn', 'Shellah', 'Shoohey', 'Cocolu', 'Hachi'
+    ];
+
+    // --- PERSISTENCE LOGIC START ---
+    const STORAGE_KEY = 'utaite_wiki_checklist_v1';
+
+    // 2. Initialize Data Structure (Database -> JSON)
+    let db = [];
+
+    function initDB() {
+        // Check if we have saved data
+        const savedData = localStorage.getItem(STORAGE_KEY);
+
+        if (savedData) {
+            try {
+                // Load saved data
+                const parsedData = JSON.parse(savedData);
+                // Merge logic: If you ever add new names to rawNames in code, 
+                // this ensures they appear without deleting old progress.
+                const savedMap = new Map(parsedData.map(i => [i.pagename, i.checked]));
+
+                db = rawNames.sort((a, b) => a.localeCompare(b)).map(name => ({
+                    pagename: name,
+                    checked: savedMap.has(name) ? savedMap.get(name) : false
+                }));
+            } catch (e) {
+                console.error("Error parsing localStorage", e);
+                // Fallback if data is corrupted
+                db = createFreshDB();
+            }
+        } else {
+            // No save found, start fresh
+            db = createFreshDB();
+        }
+    }
+
+    function createFreshDB() {
+        return rawNames.sort((a, b) => a.localeCompare(b)).map(name => ({
+            pagename: name,
+            checked: false
+        }));
+    }
+
+    function saveToStorage() {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
+    }
+    // --- PERSISTENCE LOGIC END ---
+
+    // DOM Elements
+    const tableBody = document.getElementById('table-body');
+    const searchInput = document.getElementById('search-input');
+    const checkedCountEl = document.getElementById('checked-count');
+    const totalCountEl = document.getElementById('total-count');
+
+    // 3. Render Function
+    function renderTable(data) {
+        tableBody.innerHTML = '';
+
+        if (data.length === 0) {
+            tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="3" class="p-8 text-center text-gray-400">
+                            No matching names found.
+                        </td>
+                    </tr>
+                `;
+            return;
+        }
+
+        data.forEach((item, index) => {
+            const tr = document.createElement('tr');
+            tr.className = "hover:bg-gray-50 transition-colors group";
+
+            const link = `https://utaite.wiki/wiki/${encodeURIComponent(item.pagename)}`;
+
+            // We need to look up the ORIGINAL index in the main db to toggle correctly
+            // even when the view is filtered by search.
+            // However, since 'toggleCheck' uses the unique Name, we are safe.
+
+            tr.innerHTML = `
+                    <td class="p-4 text-center border-b border-gray-100">
+                        <input 
+                            type="checkbox" 
+                            class="w-5 h-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer transition-all"
+                            ${item.checked ? 'checked' : ''}
+                            onchange="toggleCheck('${item.pagename.replace(/'/g, "\\'")}')" 
+                        >
+                    </td>
+                    <td class="p-4 border-b border-gray-100 text-sm font-medium text-gray-700 break-words">
+                        ${highlightMatch(item.pagename, searchInput.value)}
+                    </td>
+                    <td class="p-4 border-b border-gray-100 text-center">
+                        <a href="${link}" target="_blank" class="inline-flex items-center justify-center p-2 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-md transition-colors" title="Open Wiki Page">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+                            </svg>
+                        </a>
+                    </td>
+                `;
+            tableBody.appendChild(tr);
+        });
+    }
+
+    // 4. Toggle Logic (Updated for Persistence)
+    window.toggleCheck = (name) => {
+        const item = db.find(x => x.pagename === name);
+        if (item) {
+            item.checked = !item.checked;
+            saveToStorage(); // <--- This line saves the new state
+            updateStats();
+        }
+    };
+
+    // 5. Update Counter
+    function updateStats() {
+        const total = db.length;
+        const checked = db.filter(x => x.checked).length;
+        totalCountEl.textContent = total;
+        checkedCountEl.textContent = checked;
+    }
+
+    // 6. Search Highlight Helper
+    function highlightMatch(text, query) {
+        if (!query) return text;
+        const regex = new RegExp(`(${query})`, 'gi');
+        return text.replace(regex, '<span class="bg-yellow-200 text-gray-900">$1</span>');
+    }
+
+    // 7. Event Listeners
+    searchInput.addEventListener('input', (e) => {
+        const query = e.target.value.toLowerCase();
+        const filtered = db.filter(item => item.pagename.toLowerCase().includes(query));
+        renderTable(filtered);
+    });
+
+    // Initialize
+    initDB();
+    updateStats();
+    renderTable(db);
+</script>

@@ -17,7 +17,7 @@ class ParsedSongEntry:
     upload_date: Optional[str] = None  # YYYY-MM-DD
     featured_artists: list[str] = field(default_factory=list)
     version: Optional[str] = None
-    status: str = "active"  # active, deleted, private, unlisted, community_only
+    status: str = ""  # "", "deleted", "private", "unlisted", "community_only"
     notes: list[str] = field(default_factory=list)
     is_original: bool = False
     is_self_cover: bool = False

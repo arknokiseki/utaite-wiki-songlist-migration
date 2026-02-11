@@ -182,7 +182,7 @@ class TestStatus:
 
     def test_active_by_default(self):
         result = _parse('# "Song" {{yt|abc}} (2020.01.01)')
-        assert result["status"] == "active"
+        assert result["status"] == ""
 
 
 class TestTranslationAndNotes:
